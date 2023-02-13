@@ -1,0 +1,5 @@
+{
+	"sources": ["test/a.txt", "test/b/b.txt"],
+	"destinations": "test/out",
+	"keep": [[5, 1], [3, 5], [2, 7]]
+}
