@@ -1,6 +1,6 @@
 #import pytest
 import datetime
-from backup2 import delete, Rule
+from backup import delete, Rule
 
 def test_1_rule_too_few():
     keep = [Rule(5, 1)]
