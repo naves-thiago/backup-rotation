@@ -6,9 +6,12 @@ class Rule:
     count: int
     interval: int
 
-#   "keep": [[30, 1], [10, 7], [10, 30]]       # History to keep - Array of [number of files, period]
-#                                              # Example: Every file for the most recent 30,
-#                                              #   then oldest 1 for each 7 older, keeping 10 backed-up,
+#   "keep": [[30, 1], [10, 7], [10, 28]]       # History to keep - Array of [number of files, period]
+#                                              # Example: On file per day for the most recent 30,
+#                                              #   then oldest 1 for each 7 days, keeping 10 backed-up,
+#                                              #   the 1 for each 28 days, keeping 10 backed-up.
+#                                              # NOTE: Each interval must be a multiple of the
+#                                              #   previous one.
 
 def delete(dates: list[datetime.date], rules: list[Rule]) -> list[datetime.date]:
     rule_i = 0

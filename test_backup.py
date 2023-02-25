@@ -549,6 +549,23 @@ def test_3_rules_2():
     assert delete(dates, keep) == [datetime.date(2023, 2, 19)]
 
 
+def test_3_rules_3():
+    keep = [
+        Rule(30, 1),
+        Rule(16, 7),
+        Rule(18, 28)
+    ]
+
+    start = datetime.date(2022, 3, 1)
+    dates = [start + datetime.timedelta(days=x) for x in range(30 + 7*16 + 28*18 + 2)]
+    keep_dates: list[datetime.date] = []
+    keep_dates.extend([start + datetime.timedelta(days=x) for x in range(30)])
+    keep_dates.extend([start + datetime.timedelta(days=29 + 7*x) for x in range(1, 17)])
+    keep_dates.extend([start + datetime.timedelta(days=29 + 7*16 + 28*x) for x in range(1, 19)])
+    delete_dates = set(dates) - set(keep_dates)
+    assert set(delete(dates, keep)) == delete_dates
+
+
 def test_file_names_to_dates_empty():
     assert file_names_to_dates([]) == []
 
