@@ -1,6 +1,6 @@
 #import pytest
 import datetime
-from backup import delete, Rule, file_names_to_dates
+from backup import get_delete_dates, Rule, file_names_to_dates
 
 def test_1_rule_too_few():
     keep = [Rule(5, 1)]
@@ -12,7 +12,7 @@ def test_1_rule_too_few():
         datetime.date(2022, 1, 4),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_1_rule_exact():
     keep = [Rule(5, 1)]
@@ -25,7 +25,7 @@ def test_1_rule_exact():
         datetime.date(2022, 1, 5),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_1_rule_too_many():
     keep = [Rule(5, 1)]
@@ -45,7 +45,7 @@ def test_1_rule_too_many():
         datetime.date(2022, 1, 7),
     }
 
-    assert set(delete(dates, keep)) == to_delete
+    assert set(get_delete_dates(dates, keep)) == to_delete
 
 def test_1_rule_interval_2_too_few_consecutive():
     keep = [Rule(5, 2)]
@@ -57,7 +57,7 @@ def test_1_rule_interval_2_too_few_consecutive():
         datetime.date(2022, 1, 4),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_1_rule_interval_2_too_few_skipping():
     keep = [Rule(5, 2)]
@@ -69,7 +69,7 @@ def test_1_rule_interval_2_too_few_skipping():
         datetime.date(2022, 1, 7),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_1_rule_interval_2_exact_consecutive():
     keep = [Rule(5, 2)]
@@ -82,7 +82,7 @@ def test_1_rule_interval_2_exact_consecutive():
         datetime.date(2022, 1, 5),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_1_rule_interval_2_exact_skipping():
     keep = [Rule(5, 2)]
@@ -95,7 +95,7 @@ def test_1_rule_interval_2_exact_skipping():
         datetime.date(2022, 1, 9),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_1_rule_interval_2_too_many_consecutive():
     keep = [Rule(5, 2)]
@@ -123,7 +123,7 @@ def test_1_rule_interval_2_too_many_consecutive():
         datetime.date(2022, 1, 11),
     }
 
-    assert set(delete(dates, keep)) == to_delete
+    assert set(get_delete_dates(dates, keep)) == to_delete
 
 def test_1_rule_interval_2_too_many_skipping():
     keep = [Rule(5, 2)]
@@ -141,7 +141,149 @@ def test_1_rule_interval_2_too_many_skipping():
         datetime.date(2022, 1, 11),
     }
 
-    assert set(delete(dates, keep)) == to_delete
+    assert set(get_delete_dates(dates, keep)) == to_delete
+
+def test_1_rule_too_few_out_of_order():
+    keep = [Rule(5, 1)]
+
+    dates = [
+        datetime.date(2022, 1, 2),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 4),
+    ]
+
+    assert get_delete_dates(dates, keep) == []
+
+def test_1_rule_exact_out_of_order():
+    keep = [Rule(5, 1)]
+
+    dates = [
+        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 2),
+        datetime.date(2022, 1, 4),
+    ]
+
+    assert get_delete_dates(dates, keep) == []
+
+def test_1_rule_too_many_out_of_order():
+    keep = [Rule(5, 1)]
+
+    dates = [
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 2),
+        datetime.date(2022, 1, 4),
+        datetime.date(2022, 1, 6),
+        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 7),
+    ]
+
+    to_delete = {
+        datetime.date(2022, 1, 6),
+        datetime.date(2022, 1, 7),
+    }
+
+    assert set(get_delete_dates(dates, keep)) == to_delete
+
+def test_1_rule_interval_2_too_few_consecutive_out_of_order():
+    keep = [Rule(5, 2)]
+
+    dates = [
+        datetime.date(2022, 1, 2),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 4),
+    ]
+
+    assert get_delete_dates(dates, keep) == []
+
+def test_1_rule_interval_2_too_few_skipping_out_of_order():
+    keep = [Rule(5, 2)]
+
+    dates = [
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 5),
+    ]
+
+    assert get_delete_dates(dates, keep) == []
+
+def test_1_rule_interval_2_exact_consecutive_out_of_order():
+    keep = [Rule(5, 2)]
+
+    dates = [
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 4),
+        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 2),
+    ]
+
+    assert get_delete_dates(dates, keep) == []
+
+def test_1_rule_interval_2_exact_skipping_out_of_order():
+    keep = [Rule(5, 2)]
+
+    dates = [
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 9),
+    ]
+
+    assert get_delete_dates(dates, keep) == []
+
+def test_1_rule_interval_2_too_many_consecutive_out_of_order():
+    keep = [Rule(5, 2)]
+
+    dates = [
+        datetime.date(2022, 1, 4),
+        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 6),
+        datetime.date(2022, 1, 8),
+        datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 9),
+        datetime.date(2022, 1, 10),
+        datetime.date(2022, 1, 11),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 2),
+        datetime.date(2022, 1, 3),
+    ]
+
+    to_delete = {
+        datetime.date(2022, 1, 2),
+        datetime.date(2022, 1, 4),
+        datetime.date(2022, 1, 6),
+        datetime.date(2022, 1, 8),
+        datetime.date(2022, 1, 10),
+        datetime.date(2022, 1, 11),
+    }
+
+    assert set(get_delete_dates(dates, keep)) == to_delete
+
+def test_1_rule_interval_2_too_many_skipping_out_of_order():
+    keep = [Rule(5, 2)]
+
+    dates = [
+        datetime.date(2022, 1, 11),
+        datetime.date(2022, 1, 9),
+        datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 1),
+    ]
+
+    to_delete = {
+        datetime.date(2022, 1, 11),
+    }
+
+    assert set(get_delete_dates(dates, keep)) == to_delete
+
 
 def test_2_rules_too_few_1st_consecutive():
     keep = [
@@ -156,7 +298,7 @@ def test_2_rules_too_few_1st_consecutive():
         datetime.date(2022, 1, 4),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_too_few_1st_skipping():
     keep = [
@@ -171,7 +313,7 @@ def test_2_rules_too_few_1st_skipping():
         datetime.date(2022, 1, 7),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_too_few_2nd():
     keep = [
@@ -188,7 +330,7 @@ def test_2_rules_too_few_2nd():
         datetime.date(2022, 1, 6),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_too_few_2nd_consecutive():
     keep = [
@@ -206,7 +348,7 @@ def test_2_rules_too_few_2nd_consecutive():
         datetime.date(2022, 1, 7),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_too_few_2nd_skipping():
     keep = [
@@ -224,7 +366,7 @@ def test_2_rules_too_few_2nd_skipping():
         datetime.date(2022, 1, 8),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_too_few_2nd_skipping_2():
     keep = [
@@ -242,7 +384,7 @@ def test_2_rules_too_few_2nd_skipping_2():
         datetime.date(2022, 1, 9),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_exact_2nd_consecutive():
     keep = [
@@ -261,7 +403,7 @@ def test_2_rules_exact_2nd_consecutive():
         datetime.date(2022, 1, 8),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_exact_2nd_skipping():
     keep = [
@@ -280,7 +422,7 @@ def test_2_rules_exact_2nd_skipping():
         datetime.date(2022, 1, 10),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_exact_2nd_skipping_2():
     keep = [
@@ -299,7 +441,7 @@ def test_2_rules_exact_2nd_skipping_2():
         datetime.date(2022, 1, 11),
     ]
 
-    assert delete(dates, keep) == []
+    assert get_delete_dates(dates, keep) == []
 
 def test_2_rules_1_too_many_2nd_consecutive():
     keep = [
@@ -319,7 +461,7 @@ def test_2_rules_1_too_many_2nd_consecutive():
         datetime.date(2022, 1, 9),
     ]
 
-    assert delete(dates, keep) == [datetime.date(2022, 1, 6)]
+    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 6)]
 
 def test_2_rules_1_too_many_2nd_skipping_delete_first():
     keep = [
@@ -339,7 +481,7 @@ def test_2_rules_1_too_many_2nd_skipping_delete_first():
         datetime.date(2022, 1, 12),
     ]
 
-    assert delete(dates, keep) == [datetime.date(2022, 1, 6)]
+    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 6)]
 
 def test_2_rules_1_too_many_2nd_skipping_keep_first():
     keep = [
@@ -359,7 +501,7 @@ def test_2_rules_1_too_many_2nd_skipping_keep_first():
         datetime.date(2022, 1, 13),
     ]
 
-    assert delete(dates, keep) == [datetime.date(2022, 1, 13)]
+    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 13)]
 
 def test_2_rules_2_too_many_2nd_consecutive():
     keep = [
@@ -380,7 +522,7 @@ def test_2_rules_2_too_many_2nd_consecutive():
         datetime.date(2022, 1, 10),
     ]
 
-    assert set(delete(dates, keep)) == {
+    assert set(get_delete_dates(dates, keep)) == {
         datetime.date(2022, 1, 6),
         datetime.date(2022, 1, 8),
     }
@@ -404,7 +546,7 @@ def test_2_rules_2_too_many_2nd_skipping():
         datetime.date(2022, 1, 14),
     ]
 
-    assert set(delete(dates, keep)) == {
+    assert set(get_delete_dates(dates, keep)) == {
         datetime.date(2022, 1, 6),  # Too close to the previous date
         datetime.date(2022, 1, 14), # Oldest
     }
@@ -428,7 +570,7 @@ def test_2_rules_2_too_many_2nd_skipping_2():
         datetime.date(2022, 1, 15),
     ]
 
-    assert set(delete(dates, keep)) == {
+    assert set(get_delete_dates(dates, keep)) == {
         datetime.date(2022, 1, 13),
         datetime.date(2022, 1, 15),
     }
@@ -519,7 +661,7 @@ def test_3_rules():
         datetime.date(2022, 2, 11),
     }
 
-    deleted = set(delete(dates, keep))
+    deleted = set(get_delete_dates(dates, keep))
     assert to_delete == deleted
 
 def test_3_rules_2():
@@ -546,7 +688,7 @@ def test_3_rules_2():
         datetime.date(2023, 2, 19), # del
     ]
 
-    assert delete(dates, keep) == [datetime.date(2023, 2, 19)]
+    assert get_delete_dates(dates, keep) == [datetime.date(2023, 2, 19)]
 
 
 def test_3_rules_3():
@@ -563,7 +705,7 @@ def test_3_rules_3():
     keep_dates.extend([start + datetime.timedelta(days=29 + 7*x) for x in range(1, 17)])
     keep_dates.extend([start + datetime.timedelta(days=29 + 7*16 + 28*x) for x in range(1, 19)])
     delete_dates = set(dates) - set(keep_dates)
-    assert set(delete(dates, keep)) == delete_dates
+    assert set(get_delete_dates(dates, keep)) == delete_dates
 
 
 def test_file_names_to_dates_empty():
