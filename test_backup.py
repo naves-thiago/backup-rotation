@@ -1,6 +1,6 @@
 #import pytest
 import datetime
-from backup import delete, Rule
+from backup import delete, Rule, file_names_to_dates
 
 def test_1_rule_too_few():
     keep = [Rule(5, 1)]
@@ -547,3 +547,49 @@ def test_3_rules_2():
     ]
 
     assert delete(dates, keep) == [datetime.date(2023, 2, 19)]
+
+
+def test_file_names_to_dates_empty():
+    assert file_names_to_dates([]) == []
+
+
+def test_file_names_to_dates_1_file():
+    assert file_names_to_dates(['AN_ERP_2022_09_08-22_00.fdb']) == [('AN_ERP_2022_09_08-22_00.fdb', datetime.date(2022, 9, 8))]
+
+
+def test_file_names_to_dates_multiple_files():
+    files = [
+            'AN_ERP_2022_09_08-22_00.fdb',
+            'AN_ERP_2020_01_09-14_50.fdb',
+            'Contas_2022_08_05-22_00.fdb',
+            'Contas_LEO_2022_08_13-22_00.fdb']
+
+    out = [
+            ('AN_ERP_2022_09_08-22_00.fdb', datetime.date(2022, 9, 8)),
+            ('AN_ERP_2020_01_09-14_50.fdb', datetime.date(2020, 1, 9)),
+            ('Contas_2022_08_05-22_00.fdb', datetime.date(2022, 8, 5)),
+            ('Contas_LEO_2022_08_13-22_00.fdb', datetime.date(2022, 8, 13))]
+
+    assert file_names_to_dates(files) == out
+
+
+def test_file_names_to_dates_1_invalid_file():
+    assert file_names_to_dates(['bla.fdb']) == []
+
+
+def test_file_names_to_dates_multiple_files_with_invalid_mixed():
+    files = [
+            'AN_ERP_2022_09_08-22_00.fdb',
+            'AN_ERP_2020_01_09-14_50.fdb',
+            'foo.fdb',
+            'Contas_2022_08_05-22_00.fdb',
+            '',
+            'Contas_LEO_2022_08_13-22_00.fdb']
+
+    out = [
+            ('AN_ERP_2022_09_08-22_00.fdb', datetime.date(2022, 9, 8)),
+            ('AN_ERP_2020_01_09-14_50.fdb', datetime.date(2020, 1, 9)),
+            ('Contas_2022_08_05-22_00.fdb', datetime.date(2022, 8, 5)),
+            ('Contas_LEO_2022_08_13-22_00.fdb', datetime.date(2022, 8, 13))]
+
+    assert file_names_to_dates(files) == out

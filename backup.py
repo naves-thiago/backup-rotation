@@ -1,4 +1,4 @@
-import datetime
+import datetime, os, re
 from dataclasses import dataclass
 
 @dataclass()
@@ -34,3 +34,20 @@ def delete(dates: list[datetime.date], rules: list[Rule]) -> list[datetime.date]
             last_kept = dates[date_i]
 
     return delete
+
+
+def file_names_to_dates(file_list: list[str]) -> list[tuple[str, datetime.date]]:
+    regex = re.compile(r'.+_([0-9]{4})_([0-9]{2})_([0-9]{2})-[0-9]{2}_[0-9]{2}\.fdb')
+    out = []
+    for file in file_list:
+        m = regex.match(file)
+        if not m:
+            # report?
+            continue
+        out.append((file, datetime.date(*map(int, m.groups()))))
+    return out
+
+
+def list_files(base_dir: str) -> list[tuple[str, datetime.date]]:
+    return file_names_to_dates(os.listdir(base_dir))
+
