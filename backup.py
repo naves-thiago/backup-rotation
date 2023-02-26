@@ -56,3 +56,14 @@ def file_names_to_dates(file_list: list[str]) -> list[tuple[str, datetime.date]]
 def list_files(base_dir: str) -> list[tuple[str, datetime.date]]:
     return file_names_to_dates(os.listdir(base_dir))
 
+
+def get_delete_file_names(file_list: list[str], rules: list[Rule]) -> list[str]:
+    files_with_dates = file_names_to_dates(file_list)
+    dates = list({f[1] for f in files_with_dates}) # set to list conversion to remove duplicates
+    delete_dates = set(get_delete_dates(dates, rules))
+    out = []
+    for fname, fdate in files_with_dates:
+        if fdate in delete_dates:
+            out.append(fname)
+
+    return out

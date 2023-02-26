@@ -1,6 +1,6 @@
 #import pytest
 import datetime
-from backup import get_delete_dates, Rule, file_names_to_dates
+from backup import get_delete_dates, Rule, file_names_to_dates, get_delete_file_names
 
 def test_1_rule_too_few():
     keep = [Rule(5, 1)]
@@ -752,3 +752,42 @@ def test_file_names_to_dates_multiple_files_with_invalid_mixed():
             ('Contas_LEO_2022_08_13-22_00.fdb', datetime.date(2022, 8, 13))]
 
     assert file_names_to_dates(files) == out
+
+
+def test_get_delete_file_names():
+    keep = [Rule(5, 1)]
+
+    files = [
+        'foo_bar_2022_01_01-22_00.fdb',
+        'foo_bar_2022_01_02-22_00.fdb',
+        'foo_bar_2022_01_03-22_00.fdb',
+        'foo_bar_2022_01_04-22_00.fdb',
+        'foo_bar_2022_01_05-22_00.fdb',
+        'foo_bar_2022_01_06-22_00.fdb',
+        'foo_bar_2022_01_07-22_00.fdb',
+        'asd_2022_01_01-22_00.fdb',
+        'asd_2022_01_02-22_00.fdb',
+        'asd_2022_01_03-22_00.fdb',
+        'asd_2022_01_04-22_00.fdb',
+        'asd_2022_01_05-22_00.fdb',
+        'asd_2022_01_06-22_00.fdb',
+        'asd_2022_01_07-22_00.fdb',
+        'aaa_2022_01_01-22_00.fdb',
+        'aaa_2022_01_02-22_00.fdb',
+        'aaa_2022_01_03-22_00.fdb',
+        'aaa_2022_01_04-22_00.fdb',
+        'aaa_2022_01_05-22_00.fdb',
+        'aaa_2022_01_07-22_00.fdb',
+        'aaa_2022_01_17-22_00.fdb',
+    ]
+
+    to_delete = {
+        'foo_bar_2022_01_06-22_00.fdb',
+        'foo_bar_2022_01_07-22_00.fdb',
+        'asd_2022_01_06-22_00.fdb',
+        'asd_2022_01_07-22_00.fdb',
+        'aaa_2022_01_07-22_00.fdb',
+        'aaa_2022_01_17-22_00.fdb',
+    }
+
+    assert set(get_delete_file_names(files, keep)) == to_delete
