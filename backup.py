@@ -26,7 +26,7 @@ def get_delete_dates(dates: list[datetime.date], rules: list[Rule]) -> list[date
         raise ValueError('Must have at least 1 rule')
 
     dates = dates.copy()
-    dates.sort()
+    dates.sort(reverse=True)
     rule_i = 0
     rule = rules[0]
     kept = 1
@@ -43,7 +43,7 @@ def get_delete_dates(dates: list[datetime.date], rules: list[Rule]) -> list[date
                 break
             rule = rules[rule_i]
 
-        if (dates[date_i] - last_kept).days < rule.interval and (len(dates) - date_i) > (rule.count - kept):
+        if (last_kept - dates[date_i]).days < rule.interval and (len(dates) - date_i) > (rule.count - kept):
             delete.append(dates[date_i])
         else:
             kept += 1

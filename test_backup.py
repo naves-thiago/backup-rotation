@@ -1,6 +1,53 @@
-#import pytest
-import datetime
+import pytest
+import datetime, os
+from typing import Any, Callable
+import backup
 from backup import get_delete_dates, Rule, file_names_to_dates, get_delete_file_names
+
+class Mock_file_ops:
+    def __init__(self):
+        self.dir_files: dict[str, list[str]] = {}
+        self.calls: dict[str, list[Any]] = {
+            'listdir': [],
+            'remove': [],
+            'move': []
+        }
+
+    def listdir(self, path) -> list[str]:
+        self.calls['listdir'].append(path)
+        return self.dir_files[path].copy()
+
+    def remove(self, path):
+        self.calls['remove'].append(path)
+        dir_name = os.path.dirname(path)
+        file_name = os.path.basename(path)
+        self.param_remove_path = path
+        self.dir_files[dir_name].remove(file_name)
+
+    def move(self, src: str, dst: str):
+        self.calls['move'].append((src, dst))
+        self.param_move_src = src
+        self.param_move_dst = dst
+        src_dir = os.path.dirname(src)
+        src_file_name = os.path.basename(src)
+        dst_dir = os.path.dirname(dst)
+        dst_file_name = os.path.basename(dst)
+        assert src_dir in self.dir_files
+        assert src_file_name in self.dir_files[src_dir]
+        assert dst_dir in self.dir_files
+        assert dst_file_name not in self.dir_files[dst_dir]
+        self.dir_files[src_dir].remove(src_file_name)
+        self.dir_files[dst_dir].append(dst_file_name)
+
+
+def test_get_delete_dates_empty_dates():
+    keep = [Rule(5, 1)]
+    assert get_delete_dates([], keep) == []
+
+
+def test_get_delete_dates_empty_rules():
+    with pytest.raises(ValueError):
+        get_delete_dates([datetime.date(2022, 1, 1)], [])
 
 def test_1_rule_too_few():
     keep = [Rule(5, 1)]
@@ -41,8 +88,8 @@ def test_1_rule_too_many():
     ]
 
     to_delete = {
-        datetime.date(2022, 1, 6),
-        datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 2),
     }
 
     assert set(get_delete_dates(dates, keep)) == to_delete
@@ -115,12 +162,12 @@ def test_1_rule_interval_2_too_many_consecutive():
     ]
 
     to_delete = {
+        datetime.date(2022, 1, 1),
         datetime.date(2022, 1, 2),
         datetime.date(2022, 1, 4),
         datetime.date(2022, 1, 6),
         datetime.date(2022, 1, 8),
         datetime.date(2022, 1, 10),
-        datetime.date(2022, 1, 11),
     }
 
     assert set(get_delete_dates(dates, keep)) == to_delete
@@ -138,7 +185,7 @@ def test_1_rule_interval_2_too_many_skipping():
     ]
 
     to_delete = {
-        datetime.date(2022, 1, 11),
+        datetime.date(2022, 1, 1),
     }
 
     assert set(get_delete_dates(dates, keep)) == to_delete
@@ -182,8 +229,8 @@ def test_1_rule_too_many_out_of_order():
     ]
 
     to_delete = {
-        datetime.date(2022, 1, 6),
-        datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 2),
     }
 
     assert set(get_delete_dates(dates, keep)) == to_delete
@@ -256,12 +303,12 @@ def test_1_rule_interval_2_too_many_consecutive_out_of_order():
     ]
 
     to_delete = {
+        datetime.date(2022, 1, 1),
         datetime.date(2022, 1, 2),
         datetime.date(2022, 1, 4),
         datetime.date(2022, 1, 6),
         datetime.date(2022, 1, 8),
         datetime.date(2022, 1, 10),
-        datetime.date(2022, 1, 11),
     }
 
     assert set(get_delete_dates(dates, keep)) == to_delete
@@ -279,7 +326,7 @@ def test_1_rule_interval_2_too_many_skipping_out_of_order():
     ]
 
     to_delete = {
-        datetime.date(2022, 1, 11),
+        datetime.date(2022, 1, 1),
     }
 
     assert set(get_delete_dates(dates, keep)) == to_delete
@@ -461,7 +508,7 @@ def test_2_rules_1_too_many_2nd_consecutive():
         datetime.date(2022, 1, 9),
     ]
 
-    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 6)]
+    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 4)]
 
 def test_2_rules_1_too_many_2nd_skipping_delete_first():
     keep = [
@@ -472,13 +519,13 @@ def test_2_rules_1_too_many_2nd_skipping_delete_first():
     dates = [
         datetime.date(2022, 1, 1),
         datetime.date(2022, 1, 2),
-        datetime.date(2022, 1, 3),
         datetime.date(2022, 1, 4),
-        datetime.date(2022, 1, 5),
         datetime.date(2022, 1, 6),
+        datetime.date(2022, 1, 7),
         datetime.date(2022, 1, 8),
+        datetime.date(2022, 1, 9),
         datetime.date(2022, 1, 10),
-        datetime.date(2022, 1, 12),
+        datetime.date(2022, 1, 11),
     ]
 
     assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 6)]
@@ -491,17 +538,17 @@ def test_2_rules_1_too_many_2nd_skipping_keep_first():
 
     dates = [
         datetime.date(2022, 1, 1),
-        datetime.date(2022, 1, 2),
         datetime.date(2022, 1, 3),
-        datetime.date(2022, 1, 4),
         datetime.date(2022, 1, 5),
         datetime.date(2022, 1, 7),
         datetime.date(2022, 1, 9),
+        datetime.date(2022, 1, 10),
         datetime.date(2022, 1, 11),
+        datetime.date(2022, 1, 12),
         datetime.date(2022, 1, 13),
     ]
 
-    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 13)]
+    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 1)]
 
 def test_2_rules_2_too_many_2nd_consecutive():
     keep = [
@@ -523,8 +570,8 @@ def test_2_rules_2_too_many_2nd_consecutive():
     ]
 
     assert set(get_delete_dates(dates, keep)) == {
-        datetime.date(2022, 1, 6),
-        datetime.date(2022, 1, 8),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 5),
     }
 
 def test_2_rules_2_too_many_2nd_skipping():
@@ -536,19 +583,19 @@ def test_2_rules_2_too_many_2nd_skipping():
     dates = [
         datetime.date(2022, 1, 1),
         datetime.date(2022, 1, 2),
-        datetime.date(2022, 1, 3),
         datetime.date(2022, 1, 4),
-        datetime.date(2022, 1, 5),
         datetime.date(2022, 1, 6),
         datetime.date(2022, 1, 8),
+        datetime.date(2022, 1, 9),
         datetime.date(2022, 1, 10),
+        datetime.date(2022, 1, 11),
         datetime.date(2022, 1, 12),
-        datetime.date(2022, 1, 14),
+        datetime.date(2022, 1, 13),
     ]
 
     assert set(get_delete_dates(dates, keep)) == {
-        datetime.date(2022, 1, 6),  # Too close to the previous date
-        datetime.date(2022, 1, 14), # Oldest
+        datetime.date(2022, 1, 8), # Too close to the previous date
+        datetime.date(2022, 1, 1), # oldest
     }
 
 def test_2_rules_2_too_many_2nd_skipping_2():
@@ -559,20 +606,20 @@ def test_2_rules_2_too_many_2nd_skipping_2():
 
     dates = [
         datetime.date(2022, 1, 1),
-        datetime.date(2022, 1, 2),
         datetime.date(2022, 1, 3),
-        datetime.date(2022, 1, 4),
         datetime.date(2022, 1, 5),
         datetime.date(2022, 1, 7),
         datetime.date(2022, 1, 9),
         datetime.date(2022, 1, 11),
+        datetime.date(2022, 1, 12),
         datetime.date(2022, 1, 13),
+        datetime.date(2022, 1, 14),
         datetime.date(2022, 1, 15),
     ]
 
     assert set(get_delete_dates(dates, keep)) == {
-        datetime.date(2022, 1, 13),
-        datetime.date(2022, 1, 15),
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
     }
 
 def test_3_rules():
@@ -583,82 +630,82 @@ def test_3_rules():
     ]
 
     dates = [
-        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 1), # del
         datetime.date(2022, 1, 2),
-        datetime.date(2022, 1, 3),
-        datetime.date(2022, 1, 4),
-        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 3), # del
+        datetime.date(2022, 1, 4), # del
+        datetime.date(2022, 1, 5), # del
         datetime.date(2022, 1, 6), # del
         datetime.date(2022, 1, 7), # del
-        datetime.date(2022, 1, 8),
+        datetime.date(2022, 1, 8), # del
         datetime.date(2022, 1, 9), # del
         datetime.date(2022, 1, 10), # del
         datetime.date(2022, 1, 11),
         datetime.date(2022, 1, 12), # del
         datetime.date(2022, 1, 13), # del
-        datetime.date(2022, 1, 14),
+        datetime.date(2022, 1, 14), # del
         datetime.date(2022, 1, 15), # del
         datetime.date(2022, 1, 16), # del
         datetime.date(2022, 1, 17), # del
         datetime.date(2022, 1, 18), # del
         datetime.date(2022, 1, 19), # del
-        datetime.date(2022, 1, 20), # del
+        datetime.date(2022, 1, 20),
         datetime.date(2022, 1, 21), # del
         datetime.date(2022, 1, 22), # del
-        datetime.date(2022, 1, 23),
+        datetime.date(2022, 1, 23), # del
         datetime.date(2022, 1, 24), # del
         datetime.date(2022, 1, 25), # del
         datetime.date(2022, 1, 26), # del
         datetime.date(2022, 1, 27), # del
         datetime.date(2022, 1, 28), # del
-        datetime.date(2022, 1, 29), # del
+        datetime.date(2022, 1, 29),
         datetime.date(2022, 1, 30), # del
         datetime.date(2022, 1, 31), # del
         datetime.date(2022, 2, 1),
         datetime.date(2022, 2, 2), # del
         datetime.date(2022, 2, 3), # del
-        datetime.date(2022, 2, 4), # del
+        datetime.date(2022, 2, 4),
         datetime.date(2022, 2, 5), # del
         datetime.date(2022, 2, 6), # del
-        datetime.date(2022, 2, 7), # del
-        datetime.date(2022, 2, 8), # del
-        datetime.date(2022, 2, 9), # del
+        datetime.date(2022, 2, 7),
+        datetime.date(2022, 2, 8),
+        datetime.date(2022, 2, 9),
         datetime.date(2022, 2, 10),
-        datetime.date(2022, 2, 11), # del
+        datetime.date(2022, 2, 11),
     ]
 
     to_delete = {
+        datetime.date(2022, 1, 1),
+        datetime.date(2022, 1, 3),
+        datetime.date(2022, 1, 4),
+        datetime.date(2022, 1, 5),
         datetime.date(2022, 1, 6),
         datetime.date(2022, 1, 7),
+        datetime.date(2022, 1, 8),
         datetime.date(2022, 1, 9),
         datetime.date(2022, 1, 10),
         datetime.date(2022, 1, 12),
         datetime.date(2022, 1, 13),
+        datetime.date(2022, 1, 14),
         datetime.date(2022, 1, 15),
         datetime.date(2022, 1, 16),
         datetime.date(2022, 1, 17),
         datetime.date(2022, 1, 18),
         datetime.date(2022, 1, 19),
-        datetime.date(2022, 1, 20),
         datetime.date(2022, 1, 21),
         datetime.date(2022, 1, 22),
+        datetime.date(2022, 1, 23),
         datetime.date(2022, 1, 24),
         datetime.date(2022, 1, 25),
         datetime.date(2022, 1, 26),
         datetime.date(2022, 1, 27),
         datetime.date(2022, 1, 28),
-        datetime.date(2022, 1, 29),
         datetime.date(2022, 1, 30),
         datetime.date(2022, 1, 31),
         datetime.date(2022, 2, 2),
         datetime.date(2022, 2, 3),
-        datetime.date(2022, 2, 4),
         datetime.date(2022, 2, 5),
         datetime.date(2022, 2, 6),
-        datetime.date(2022, 2, 7),
-        datetime.date(2022, 2, 8),
-        datetime.date(2022, 2, 9),
-        datetime.date(2022, 2, 11),
     }
 
     deleted = set(get_delete_dates(dates, keep))
@@ -672,40 +719,23 @@ def test_3_rules_2():
     ]
 
     dates = [
-        datetime.date(2022, 1, 1),
-        datetime.date(2022, 1, 2),
-        datetime.date(2022, 1, 3),
-        datetime.date(2022, 1, 4),
-        datetime.date(2022, 1, 5),
+        datetime.date(2022, 1, 1), # del
+        datetime.date(2022, 1, 10),
+        datetime.date(2022, 1, 19),
+        datetime.date(2022, 1, 28),
 
-        datetime.date(2022, 1, 8),
-        datetime.date(2022, 1, 11),
-        datetime.date(2022, 1, 14),
+        datetime.date(2022, 2, 6),
+        datetime.date(2022, 2, 9),
+        datetime.date(2022, 2, 12),
 
-        datetime.date(2022, 1, 23),
-        datetime.date(2022, 2, 1),
-        datetime.date(2022, 2, 10),
-        datetime.date(2023, 2, 19), # del
+        datetime.date(2022, 2, 15),
+        datetime.date(2022, 2, 16),
+        datetime.date(2022, 2, 17),
+        datetime.date(2022, 2, 18),
+        datetime.date(2022, 2, 19),
     ]
 
-    assert get_delete_dates(dates, keep) == [datetime.date(2023, 2, 19)]
-
-
-def test_3_rules_3():
-    keep = [
-        Rule(30, 1),
-        Rule(16, 7),
-        Rule(18, 28)
-    ]
-
-    start = datetime.date(2022, 3, 1)
-    dates = [start + datetime.timedelta(days=x) for x in range(30 + 7*16 + 28*18 + 2)]
-    keep_dates: list[datetime.date] = []
-    keep_dates.extend([start + datetime.timedelta(days=x) for x in range(30)])
-    keep_dates.extend([start + datetime.timedelta(days=29 + 7*x) for x in range(1, 17)])
-    keep_dates.extend([start + datetime.timedelta(days=29 + 7*16 + 28*x) for x in range(1, 19)])
-    delete_dates = set(dates) - set(keep_dates)
-    assert set(get_delete_dates(dates, keep)) == delete_dates
+    assert get_delete_dates(dates, keep) == [datetime.date(2022, 1, 1)]
 
 
 def test_file_names_to_dates_empty():
@@ -765,6 +795,7 @@ def test_get_delete_file_names():
         'foo_bar_2022_01_05-22_00.fdb',
         'foo_bar_2022_01_06-22_00.fdb',
         'foo_bar_2022_01_07-22_00.fdb',
+
         'asd_2022_01_01-22_00.fdb',
         'asd_2022_01_02-22_00.fdb',
         'asd_2022_01_03-22_00.fdb',
@@ -772,22 +803,92 @@ def test_get_delete_file_names():
         'asd_2022_01_05-22_00.fdb',
         'asd_2022_01_06-22_00.fdb',
         'asd_2022_01_07-22_00.fdb',
+
         'aaa_2022_01_01-22_00.fdb',
         'aaa_2022_01_02-22_00.fdb',
         'aaa_2022_01_03-22_00.fdb',
         'aaa_2022_01_04-22_00.fdb',
         'aaa_2022_01_05-22_00.fdb',
+        'aaa_2022_01_06-22_00.fdb',
         'aaa_2022_01_07-22_00.fdb',
-        'aaa_2022_01_17-22_00.fdb',
     ]
 
     to_delete = {
-        'foo_bar_2022_01_06-22_00.fdb',
-        'foo_bar_2022_01_07-22_00.fdb',
-        'asd_2022_01_06-22_00.fdb',
-        'asd_2022_01_07-22_00.fdb',
-        'aaa_2022_01_07-22_00.fdb',
-        'aaa_2022_01_17-22_00.fdb',
+        'foo_bar_2022_01_01-22_00.fdb',
+        'foo_bar_2022_01_02-22_00.fdb',
+        'asd_2022_01_01-22_00.fdb',
+        'asd_2022_01_02-22_00.fdb',
+        'aaa_2022_01_01-22_00.fdb',
+        'aaa_2022_01_02-22_00.fdb',
     }
 
     assert set(get_delete_file_names(files, keep)) == to_delete
+
+
+def test_do_backup_first_upload():
+    mock = Mock_file_ops()
+    orig_do_move: Callable = backup.do_move
+    orig_do_remove: Callable = backup.do_remove
+    orig_do_listdir: Callable = backup.do_listdir
+    backup.do_move = mock.move
+    backup.do_remove = mock.remove
+    backup.do_listdir = mock.listdir
+
+    files = ['bar_2022_01_06-22_00.fdb', 'foo_2022_01_06-22_00.fdb', 'asd_2022_01_06-22_00.fdb']
+    mock.dir_files = {
+        'upload': files,
+        'backups': []
+    }
+
+    rules = [Rule(5, 1)]
+    try:
+        res = backup.do_backup('backups', 'upload', ['foo', 'bar', 'asd'], rules)
+        assert res
+    finally:
+        backup.do_move = orig_do_move
+        backup.do_remove = orig_do_remove
+        backup.do_listdir = orig_do_listdir
+
+    assert len(mock.calls['remove']) == 0
+    assert len(mock.dir_files['upload']) == 0
+    assert len(mock.dir_files['backups']) == 3
+    for fname in files:
+        assert fname in mock.dir_files['backups']
+
+
+def test_do_backup_delete_1():
+    mock = Mock_file_ops()
+    orig_do_move: Callable = backup.do_move
+    orig_do_remove: Callable = backup.do_remove
+    orig_do_listdir: Callable = backup.do_listdir
+    backup.do_move = mock.move
+    backup.do_remove = mock.remove
+    backup.do_listdir = mock.listdir
+
+    upload = ['bar_2022_01_09-22_00.fdb']
+    backups = ['bar_2022_01_06-22_00.fdb',
+               'bar_2022_01_07-22_00.fdb',
+               'bar_2022_01_08-22_00.fdb']
+    mock.dir_files = {
+        'upload': upload,
+        'backups': backups
+    }
+
+    rules = [Rule(3, 1)]
+    try:
+        res = backup.do_backup('backups', 'upload', ['bar'], rules)
+        assert res
+    finally:
+        backup.do_move = orig_do_move
+        backup.do_remove = orig_do_remove
+        backup.do_listdir = orig_do_listdir
+
+    assert set(mock.calls['remove']) == set(['backups/bar_2022_01_06-22_00.fdb'])
+
+    backed_up = set([
+        'bar_2022_01_07-22_00.fdb',
+        'bar_2022_01_08-22_00.fdb',
+        'bar_2022_01_09-22_00.fdb'])
+
+    assert len(mock.dir_files['upload']) == 0
+    assert set(mock.dir_files['backups']) == backed_up
